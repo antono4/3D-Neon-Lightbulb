@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Neon Lightbulb</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling */
+            background-color: #0d1117; /* Dark background similar to image */
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* Optional loading screen */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff5722;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+    <!-- Include Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include OrbitControls for user interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+
+    <div id="loading">LOADING...</div>
+    <div id="canvas-container"></div>
+
+
+    <script>
+        // Set up the scene, camera, and renderer
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        
+        // Add a very dark, slightly textured background color
+        scene.background = new THREE.Color(0x0f141a);
+        scene.fog = new THREE.FogExp2(0x0f141a, 0.02); // Add fog to blend edges
+
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Position camera to look at the bulb
+        camera.position.set(0, 0, 40);
+
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        // Enable shadows
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+
+        // Add OrbitControls for mouse interaction
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enablePan = false;
+        // Limit rotation to keep it looking like a wall fixture
+        controls.minAzimuthAngle = -Math.PI / 4; 
+        controls.maxAzimuthAngle = Math.PI / 4;
+        controls.minPolarAngle = Math.PI / 3;
+        controls.maxPolarAngle = Math.PI / 1.5;
+        controls.minDistance = 20;
+        controls.maxDistance = 60;
+
+
+        // Group to hold the entire fixture
+        const fixtureGroup = new THREE.Group();
+        scene.add(fixtureGroup);
+
+
+        // Create a wall behind the fixture
+        const wallGeometry = new THREE.PlaneGeometry(100, 100);
+        const wallMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1e24, 
+            roughness: 0.9, 
+            metalness: 0.1
+        });
+        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall.position.z = -5; // Move slightly back
+        wall.receiveShadow = true;
+        scene.add(wall);
+
+
+        // --- Add a 3D Light Switch ---
+        const switchGroup = new THREE.Group();
+        switchGroup.position.set(15, -5, -4.5); // Position on the wall
+        scene.add(switchGroup);
+
+
+        // Switch Plate
+        const plateGeometry = new THREE.BoxGeometry(4, 6, 0.2);
+        const plateMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8, metalness: 0.2 });
+        const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+        plate.receiveShadow = true;
+        plate.castShadow = true;
+        switchGroup.add(plate);
+
+
+        // Switch Toggle (The part that moves)
+        const toggleGeometry = new THREE.BoxGeometry(1, 2, 0.5);
+        const toggleMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6, metalness: 0.3 });
+        const toggle = new THREE.Mesh(toggleGeometry, toggleMaterial);
+        // Position it slightly protruding
+        toggle.position.z = 0.25; 
+        // Initial state: ON (rotated up)
+        toggle.rotation.x = -Math.PI / 6; 
+        toggle.castShadow = true;
+        switchGroup.add(toggle);
+
+
+        // State variable for the light
+        let isLightOn = true;
+
+
+        // Raycaster for interactions
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+
+        window.addEventListener('click', onMouseClick, false);
+        window.addEventListener('touchstart', onTouchStart, {passive: false});
+
+
+        function handleInteraction(clientX, clientY) {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+
+            // Raycast
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check intersections with the switch plate or toggle
+            const intersects = raycaster.intersectObjects([plate, toggle]);
+
+
+            if (intersects.length > 0) {
+                toggleLightState();
+            }
+        }
+
+
+        function onMouseClick(event) {
+            handleInteraction(event.clientX, event.clientY);
+        }
+
+
+        function onTouchStart(event) {
+            if (event.touches.length > 0) {
+                handleInteraction(event.touches[0].clientX, event.touches[0].clientY);
+            }
+        }
+
+
+        function toggleLightState() {
+            isLightOn = !isLightOn;
+
+
+            if (isLightOn) {
+                // Turn ON
+                toggle.rotation.x = -Math.PI / 6; // Flip up
+                
+                // Restore glowing materials
+                neonMaterial.color.setHex(0xff4400);
+                glowMaterial.opacity = 0.5;
+                outerGlowMaterial.opacity = 0.15;
+                
+                // Turn on point light
+                bulbLight.intensity = 2;
+                
+                // Restore original base color
+                baseMaterial.color.setHex(0x111111);
+                
+            } else {
+                // Turn OFF
+                toggle.rotation.x = Math.PI / 6; // Flip down
+                
+                // Dim materials significantly to simulate off state
+                neonMaterial.color.setHex(0x330000); // Very dim dark red, not completely black to keep shape visible
+                glowMaterial.opacity = 0;
+                outerGlowMaterial.opacity = 0;
+                
+                // Turn off point light
+                bulbLight.intensity = 0;
+                
+                // Make the base slightly darker when light is off
+                baseMaterial.color.setHex(0x050505);
+            }
+        }
+        // --- End of Light Switch setup ---
+
+
+
+
+        // 1. The Orange Cord
+        const cordGeometry = new THREE.CylinderGeometry(0.3, 0.3, 20, 16);
+        const cordMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff5500, // Orange
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        const cord = new THREE.Mesh(cordGeometry, cordMaterial);
+        cord.position.y = 15; // Move up
+        cord.castShadow = true;
+        fixtureGroup.add(cord);
+
+
+        // 2. The Black Fixture Base (Cylinder)
+        const baseGroup = new THREE.Group();
+        
+        const baseMainGeometry = new THREE.CylinderGeometry(3, 3, 5, 32);
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x111111, // Very dark grey/black
+            roughness: 0.5,
+            metalness: 0.8
+        });
+        const baseMain = new THREE.Mesh(baseMainGeometry, baseMaterial);
+        baseMain.position.y = 2.5;
+        baseMain.castShadow = true;
+        baseMain.receiveShadow = true;
+        baseGroup.add(baseMain);
+
+
+        // Small top part connecting to cord
+        const baseTopGeometry = new THREE.CylinderGeometry(1, 3, 1, 32);
+        const baseTop = new THREE.Mesh(baseTopGeometry, baseMaterial);
+        baseTop.position.y = 5.5;
+        baseTop.castShadow = true;
+        baseGroup.add(baseTop);
+        
+        // Small connector right on top
+        const connectorGeometry = new THREE.CylinderGeometry(0.6, 1, 0.5, 16);
+        const connector = new THREE.Mesh(connectorGeometry, baseMaterial);
+        connector.position.y = 6.25;
+        baseGroup.add(connector);
+
+
+        // Small lip at the bottom of the base
+        const baseBottomGeometry = new THREE.CylinderGeometry(3.1, 3.1, 0.2, 32);
+        const baseBottom = new THREE.Mesh(baseBottomGeometry, baseMaterial);
+        baseBottom.position.y = 0.1;
+        baseBottom.castShadow = true;
+        baseGroup.add(baseBottom);
+
+
+        fixtureGroup.add(baseGroup);
+
+
+        // 3. The Neon Bulb Outline
+        // We'll create a custom shape using a CatmullRomCurve3
+        const curvePoints = [
+            new THREE.Vector3(-1.5, 0, 0),    // Top left connection
+            new THREE.Vector3(-1.8, -3, 0),   // Neck left
+            new THREE.Vector3(-4, -6, 0),     // Bulge left high
+            new THREE.Vector3(-4.5, -9, 0),   // Bulge left low
+            new THREE.Vector3(-2, -12, 0),    // Bottom left curve
+            new THREE.Vector3(0, -12.5, 0),   // Bottom center
+            new THREE.Vector3(2, -12, 0),     // Bottom right curve
+            new THREE.Vector3(4.5, -9, 0),    // Bulge right low
+            new THREE.Vector3(4, -6, 0),      // Bulge right high
+            new THREE.Vector3(1.8, -3, 0),    // Neck right
+            new THREE.Vector3(1.5, 0, 0)      // Top right connection
+        ];
+
+
+        const bulbCurve = new THREE.CatmullRomCurve3(curvePoints);
+        
+        // Create tube geometry along the curve
+        const tubeGeometry = new THREE.TubeGeometry(bulbCurve, 64, 0.3, 8, false);
+        
+        // Material for the glowing neon tube
+        // We use MeshBasicMaterial because it doesn't react to light, making it look self-illuminating
+        const neonMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff4400, // Core orange/red color
+        });
+        const neonTube = new THREE.Mesh(tubeGeometry, neonMaterial);
+        
+        // Offset it slightly down from the base
+        neonTube.position.y = -0.5;
+        fixtureGroup.add(neonTube);
+
+
+        // Add a slightly larger, transparent tube around it for a "glow" effect
+        const glowGeometry = new THREE.TubeGeometry(bulbCurve, 64, 0.6, 8, false);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff3300,
+            transparent: true,
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending // Makes it look brighter when overlapping
+        });
+        const glowTube = new THREE.Mesh(glowGeometry, glowMaterial);
+        glowTube.position.y = -0.5;
+        fixtureGroup.add(glowTube);
+        
+        // Another larger glow layer
+        const outerGlowGeometry = new THREE.TubeGeometry(bulbCurve, 64, 1.2, 8, false);
+        const outerGlowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff1100,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending
+        });
+        const outerGlowTube = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+        outerGlowTube.position.y = -0.5;
+        fixtureGroup.add(outerGlowTube);
+
+
+        // Adjust fixture group position to center it
+        fixtureGroup.position.y = 5;
+
+
+        // 4. Lighting
+        // Ambient light for general subtle visibility
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.1); 
+        scene.add(ambientLight);
+
+
+        // Point light representing the glow from the neon bulb
+        // Positioned inside the bulb shape
+        const bulbLight = new THREE.PointLight(0xff3300, 2, 50);
+        bulbLight.position.set(0, -1.5, 1); // Position relative to fixture group (center of bulb)
+        bulbLight.castShadow = true;
+        
+        // Optimize shadow map
+        bulbLight.shadow.mapSize.width = 1024;
+        bulbLight.shadow.mapSize.height = 1024;
+        bulbLight.shadow.bias = -0.001;
+        
+        fixtureGroup.add(bulbLight);
+
+
+        // A subtle directional light from top left to highlight the cord and base
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(-10, 20, 10);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+
+        // Remove loading text once initialized
+        document.getElementById('loading').style.opacity = '0';
+
+
+        // Animation variables
+        let time = 0;
+        
+        // Handle window resize
+        window.addEventListener('resize', onWindowResize, false);
+
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+
+
+            // Update controls
+            controls.update();
+
+
+            // Subtle floating animation for the fixture
+            fixtureGroup.position.y = 5 + Math.sin(time * 0.5) * 0.2;
+            
+            // Only apply glow pulsing and flickering if the light is ON
+            if (isLightOn) {
+                // Pulsating glow effect
+                // Modulate the intensity of the point light
+                const pulse = Math.sin(time * 2) * 0.5 + 0.5; // Value between 0 and 1
+                bulbLight.intensity = 2 + (pulse * 0.5);
+                
+                // Modulate opacity of glow layers
+                glowMaterial.opacity = 0.3 + (pulse * 0.2);
+                outerGlowMaterial.opacity = 0.1 + (pulse * 0.1);
+
+
+                // Subtle flicker effect randomly
+                if (Math.random() > 0.98) {
+                     bulbLight.intensity -= Math.random() * 0.5;
+                     neonMaterial.color.setHex(0xdd3300); // slightly darker
+                } else {
+                     neonMaterial.color.setHex(0xff4400); // normal color
+                }
+            }
+
+
+            renderer.render(scene, camera);
+        }
+
+
+        // Start animation
+        window.onload = function() {
+            animate();
+        };
+
+
+    </script>
+</body>
+</html>
