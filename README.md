@@ -19,7 +19,7 @@ Interactive 3D visualization of a neon lightbulb using Three.js.
 Open `neon-lightbulb.html` in any modern browser.
 
 ### Live Demo
-Visit: [https://antono4.github.io/3D-Neon-Lightbulb/neon-lightbulb.html](https://antono4.github.io/3D-Neon-Lightbulb/neon-lightbulb.html)
+Visit: [https://antono4.github.io/3D-Neon-Lightbulb/neon-lightbulb.html](https://antono4.github.io/3D-Neon-Lightbulb/)
 
 ## Controls
 
