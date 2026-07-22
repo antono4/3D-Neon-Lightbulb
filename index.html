@@ -36,6 +36,80 @@
             pointer-events: none;
             transition: opacity 0.5s ease;
         }
+
+        /* Glowing Quotes Container */
+        #quotes-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .quote-text {
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            color: #ff6b35;
+            text-shadow: 
+                0 0 5px #ff6b35,
+                0 0 10px #ff6b35,
+                0 0 20px #ff4500,
+                0 0 40px #ff4500,
+                0 0 80px #ff4500;
+            font-weight: 600;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            max-width: 90vw;
+            line-height: 1.6;
+        }
+
+        .quote-text.visible {
+            opacity: 1;
+        }
+
+        .quote-author {
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            color: #ffa500;
+            text-shadow: 
+                0 0 5px #ffa500,
+                0 0 10px #ff8c00;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 1s ease-in-out 0.3s;
+        }
+
+        .quote-author.visible {
+            opacity: 0.8;
+        }
+
+        .quote-nav {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .quote-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 107, 53, 0.3);
+            border: 1px solid #ff6b35;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quote-dot:hover {
+            background: rgba(255, 107, 53, 0.6);
+            box-shadow: 0 0 10px #ff6b35;
+        }
+
+        .quote-dot.active {
+            background: #ff6b35;
+            box-shadow: 0 0 15px #ff6b35;
+        }
     </style>
     <!-- Include Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -48,8 +122,135 @@
     <div id="loading">LOADING...</div>
     <div id="canvas-container"></div>
 
+    <!-- Glowing Quotes Section -->
+    <div id="quotes-container">
+        <div class="quote-text" id="quote-text"></div>
+        <div class="quote-author" id="quote-author"></div>
+        <div class="quote-nav" id="quote-nav"></div>
+    </div>
 
     <script>
+        // ============================================
+        // KATA-KATA MUTIARA - GLOWING IN THE DARK
+        // ============================================
+        const glowingQuotes = [
+            {
+                text: "Jangan takut menjadi gelap, karena bahkan lampu paling terang pernah mati sebelum menyala.",
+                author: "Anonim"
+            },
+            {
+                text: "Kamu tidak perlu bersinar seperti matahari untuk menjadi cahaya bagi orang lain.",
+                author: "Anonim"
+            },
+            {
+                text: "Di kegelapan, kita belajar menemukan cahaya kita sendiri.",
+                author: "Anonim"
+            },
+            {
+                text: "Bukan tentang seberapa terang kamu bersinar, tapi tentang berapa banyak黑暗 yang kamu usir.",
+                author: "Anonim"
+            },
+            {
+                text: "Setiap flamme memulai sebagaiapi. Yang penting adalah tidak pernah padam.",
+                author: "Anonim"
+            },
+            {
+                text: "Ketika dunia meredup, menjadi lah lampu yang tidak pernah padam.",
+                author: "Anonim"
+            },
+            {
+                text: "Glow in the dark bukan berarti kamu butuh approval dari orang lain untuk bersinar.",
+                author: "Anonim"
+            },
+            {
+                text: "Kegelapan tidak mengalahkan cahaya; cahaya hanya perlu menyala cukup terang.",
+                author: "Anonim"
+            },
+            {
+                text: "Kamu lahir untuk bersinar, bukan untuk bersembunyi di balik ketakutan.",
+                author: "Anonim"
+            },
+            {
+                text: "即使在最黑暗的夜晚，也要相信黎明终会到来。",
+                author: "Anonim"
+            },
+            {
+                text: "Light exists even in the darkest places. You are that light.",
+                author: "Anonim"
+            },
+            {
+                text: "Jangan bandingkan dirimu dengan lampu neon lain. Setiap orang punya waktu menyala masing-masing.",
+                author: "Anonim"
+            }
+        ];
+
+        let currentQuoteIndex = 0;
+        let quoteInterval;
+
+        function showQuote(index) {
+            const quoteText = document.getElementById('quote-text');
+            const quoteAuthor = document.getElementById('quote-author');
+            const dots = document.querySelectorAll('.quote-dot');
+
+            // Hide current
+            quoteText.classList.remove('visible');
+            quoteAuthor.classList.remove('visible');
+            
+            setTimeout(() => {
+                // Update content
+                quoteText.textContent = glowingQuotes[index].text;
+                quoteAuthor.textContent = "— " + glowingQuotes[index].author;
+                
+                // Update dots
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === index);
+                });
+
+                // Show new
+                quoteText.classList.add('visible');
+                quoteAuthor.classList.add('visible');
+            }, 500);
+        }
+
+        function nextQuote() {
+            currentQuoteIndex = (currentQuoteIndex + 1) % glowingQuotes.length;
+            showQuote(currentQuoteIndex);
+        }
+
+        function createQuoteDots() {
+            const nav = document.getElementById('quote-nav');
+            glowingQuotes.forEach((_, index) => {
+                const dot = document.createElement('div');
+                dot.className = 'quote-dot' + (index === 0 ? ' active' : '');
+                dot.addEventListener('click', () => {
+                    currentQuoteIndex = index;
+                    showQuote(currentQuoteIndex);
+                    resetQuoteTimer();
+                });
+                nav.appendChild(dot);
+            });
+        }
+
+        function startQuoteRotation() {
+            quoteInterval = setInterval(nextQuote, 8000); // Change quote every 8 seconds
+        }
+
+        function resetQuoteTimer() {
+            clearInterval(quoteInterval);
+            startQuoteRotation();
+        }
+
+        // Initialize quotes when page loads
+        window.addEventListener('load', () => {
+            createQuoteDots();
+            showQuote(0);
+            startQuoteRotation();
+        });
+
+        // ============================================
+        // END KATA-KATA MUTIARA
+        // ============================================
+
         // Set up the scene, camera, and renderer
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
